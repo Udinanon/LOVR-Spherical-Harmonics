@@ -53,7 +53,48 @@ function lovr.load()
             return x, y, z
         end
     )
-    print(return_SH(1, 1, .5, .5))
+    n_vertices = #harmonic22.vlist
+    print(n_vertices)
+    -- we consider to have 100 segments horizontala dn vertical
+    solid_angle = 4 * math.pi / (100 * 100)
+    maxl = 2
+    parameters={}
+    for l = 0, maxl do
+        parameters[l] = {}
+        for m = -l, l do 
+            parameters[l][m] = 0
+        end 
+    end
+    print(pretty.write(parameters, '  ', true))
+
+    for index, vertex in ipairs(harmonic22.vlist) do 
+        local x, y, z = vertex[1], vertex[2], vertex[3]
+        local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
+        local theta = math.acos(z / r)
+        local phi = math.atan2(y, x)
+        if theta ~= theta then
+            theta = 0
+        end
+        for l = 0, maxl do
+            for m = -l, l do 
+                if (r * math.sin(theta) * math.cos(phi) * solid_angle * return_SH(l, m, theta, phi)) ~= (r * math.sin(theta) * math.cos(phi) * solid_angle * return_SH(l, m, theta, phi)) then
+                    print("ERRRO")
+                    print('inrex: ', index)
+                    print('l: ', l, ' m: ', m)
+                    print(parameters[l][m])
+                    print(r * math.sin(theta) * math.cos(phi) * solid_angle * return_SH(l, m, theta, phi))
+                    print(math.sin(theta),  math.cos(phi),  return_SH(l, m, theta, phi))
+                    print(theta, phi, r)
+                    print(x, y, z)
+                    io.read(1)
+                end
+        
+                parameters[l][m] = parameters[l][m] + (r * math.sin(theta) * math.cos(phi) * solid_angle * return_SH(l, m, theta, phi))
+            end
+        end
+    end
+    print(pretty.write(parameters, '  ', true))
+    -- idk the results might be ok but i expected it to be a lot more precise and it's all over the place.....
 end
   
 function lovr.draw(pass)
@@ -75,6 +116,9 @@ function lovr.draw(pass)
 
     randomized_surface:draw(pass, vec3(-1, 1, -1))
     harmonic22:draw(pass, vec3(2, 2, 2))
+    pass:setShader()
+    --pass:text("Spherical Hamoncs examples", start_point - vec3(0, .1, 0), .1)
+    
 end
 
 function return_SH(l, m, theta, phi)
