@@ -1,5 +1,4 @@
 Constants {
-  float time;
   int l;
   int m;
 };

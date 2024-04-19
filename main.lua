@@ -59,10 +59,24 @@ function lovr.load()
     solid_angle = 2 * math.pi * math.pi / (100 * 100)
     maxl = 2
     parameters={}
+    harmonics = {}
     for l = 0, maxl do
         parameters[l] = {}
+        harmonics[l] = {}
         for m = -l, l do 
             parameters[l][m] = 0
+            harmonics[l][m] = sphere_model:map(
+                function(x, y, z)
+                    local r = 1 -- because we start from a sphere
+                    local theta = math.acos(z / r)
+                    local phi = math.atan2(y, x)
+                    r = return_SH(l, m, theta, phi)
+                    x = r * math.sin(theta) * math.cos(phi)
+                    y = r * math.sin(theta) * math.sin(phi)
+                    z = r * math.cos(theta)
+                    return x, y, z
+                end
+            )
         end 
     end
     print(pretty.write(parameters, '  ', true))
@@ -77,7 +91,7 @@ function lovr.load()
         end
         for l = 0, maxl do
             for m = -l, l do         
-                parameters[l][m] = parameters[l][m] + (r * math.sin(theta)  * solid_angle * return_SH(l, m, theta, -phi)) -- * math.cos(m * phi) -- not needed for our version
+                parameters[l][m] = parameters[l][m] + (r * math.sin(theta)  * solid_angle * return_SH(l, m, theta, phi)) -- * math.cos(m * phi) -- not needed for our version
             end
         end
     end
@@ -94,7 +108,7 @@ function lovr.load()
             r = 0 
             for l = 0, maxl do
                 for m = -l, l do
-                    r = r + (parameters[l][m] * return_SH(l, m, theta, phi))
+                    r = r + (parameters[l][m] * return_SH(l, m, theta, -phi))
                     --r = return_SH(2, 2, theta, phi)
                 end
             end
@@ -109,25 +123,21 @@ end
   
 function lovr.draw(pass)
     draw_axes(pass)
-    pass:setShader(shader)
-    local start_point = vec3(1, 1, 1)
+
+    pass:setShader('normal')
+    start_point = vec3(-2, 1, 1)
     for l = 0, 2, 1 do
         for m = -l, l, 1 do
-            pass:send('l', l)
-            pass:send('m', m)            
-            local sphere_position = start_point + vec3(0, l, m)
-            pass:sphere(sphere_position)
+            harmonics[l][m]:draw(pass, start_point + vec3(0, l, m))
         end
     end
     --pass:cube(1, 1, 1)
-    pass:send('time', lovr.timer.getTime())
     --pass:cylinder(1, 0, 3)
-    pass:setShader('normal')
 
     randomized_surface:draw(pass, vec3(-1, 1, -1))
     harmonic22:draw(pass, vec3(2, 2, 2))
     reconstructed_h22:draw(pass, vec3(2, 2, 3))
-    pass:setShader()
+    --pass:setShader()
     --pass:text("Spherical Hamoncs examples", start_point - vec3(0, .1, 0), .1)
     
 end
@@ -142,24 +152,24 @@ function return_SH(l, m, theta, phi)
     elseif l == 1 then
         if m == -1 then
             -- Y(1, -1)
-            return 0.5 * math.sqrt(1.5/math.pi) * math.sin(theta) * math.cos( -phi)
+            return math.sqrt(3/( 4 * math.pi)) * math.sin(theta) * math.sin(phi)
         elseif m == 0 then
             -- Y(1, 0)
-            return 0.5 * math.sqrt(3/math.pi) * math.cos(theta)
+            return math.sqrt(3/( 4 * math.pi)) * math.cos(theta)
         elseif m == 1 then
             -- Y(1, 1)
-            return -0.5 * math.sqrt(1.5 / math.pi) * math.sin(theta) * math.cos(phi)
+            return math.sqrt(3/( 4 * math.pi)) * math.sin(theta) * math.cos(phi)
         end
         
     elseif l == 2 then
 
       if m == -2 then
           -- Y(2, -2)
-          return 0.25 * math.sqrt(7.5/math.pi) * math.pow(math.sin(theta), 2) * math.cos(-2* phi)
+          return 0.25 * math.sqrt(15/math.pi) * math.pow(math.sin(theta), 2) * math.sin(2 * phi)
 
         elseif m == -1 then
           -- Y(2, -1)
-          return .5 * math.sqrt(7.5/math.pi) * math.sin(theta) * math.cos(theta) * math.cos(phi)
+          return 0.25 * math.sqrt(15/math.pi) * math.sin(2 * theta) * math.sin(phi)
           
         elseif m == 0 then
           -- Y(2, 0)
@@ -167,11 +177,11 @@ function return_SH(l, m, theta, phi)
           
         elseif m == 1 then
           --f Y(2, 1)
-          return -.5 * math.sqrt(7.5/math.pi) * math.sin(theta) * math.cos(theta) * math.cos(phi)
+          return 0.25 * math.sqrt(15/math.pi) * math.sin(2 * theta) * math.cos(phi)
           
         elseif m == 2 then
           --Y(2, 2)
-          return 0.25 * math.sqrt(7.5 / math.pi) * math.cos(2 * phi) * math.pow(math.sin(theta), 2)
+          return 0.25 * math.sqrt(15/math.pi) * math.pow(math.sin(theta), 2) * math.cos(2 * phi)
           
         end 
     end
