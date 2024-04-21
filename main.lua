@@ -53,18 +53,11 @@ function lovr.load()
             return x, y, z
         end
     )
-    n_vertices = #harmonic22.vlist
-    print(n_vertices)
-    -- we consider to have 100 segments horizontala dn vertical
-    solid_angle = 2 * math.pi * math.pi / (100 * 100)
     maxl = 2
-    parameters={}
     harmonics = {}
     for l = 0, maxl do
-        parameters[l] = {}
         harmonics[l] = {}
-        for m = -l, l do 
-            parameters[l][m] = 0
+        for m = -l, l do
             harmonics[l][m] = sphere_model:map(
                 function(x, y, z)
                     local r = 1 -- because we start from a sphere
@@ -77,48 +70,15 @@ function lovr.load()
                     return x, y, z
                 end
             )
-        end 
-    end
-    print(pretty.write(parameters, '  ', true))
-
-    for index, vertex in ipairs(harmonic22.vlist) do 
-        local x, y, z = vertex[1], vertex[2], vertex[3]
-        local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
-        local theta = math.acos(z / r)
-        local phi = math.atan2(y, x)
-        if theta ~= theta then
-            theta = 0
-        end
-        for l = 0, maxl do
-            for m = -l, l do         
-                parameters[l][m] = parameters[l][m] + (r * math.sin(theta)  * solid_angle * return_SH(l, m, theta, phi)) -- * math.cos(m * phi) -- not needed for our version
-            end
         end
     end
-    print(pretty.write(parameters, '  ', true))
 
-    reconstructed_h22 = sphere_model:map(
-        function(x, y, z)
-            local r = 1 --from sphere model
-            local theta = math.acos(z / r)
-            local phi = math.atan2(y, x)
-            if theta ~= theta then
-                theta = 0
-            end
-            r = 0 
-            for l = 0, maxl do
-                for m = -l, l do
-                    r = r + (parameters[l][m] * return_SH(l, m, theta, -phi))
-                    --r = return_SH(2, 2, theta, phi)
-                end
-            end
-            x = r * math.sin(theta) * math.cos(phi)
-            y = r * math.sin(theta) * math.sin(phi)
-            z = r * math.cos(theta)
-            return x, y, z
-        end
-    )
-    -- idk the results might be ok but i expected it to be a lot more precise and it's all over the place.....
+    h22_params = analyze_SH(harmonic22)
+    reconstructed_h22 = reconstruct_from_parameters(h22_params)
+
+    sphere_params = analyze_SH(sphere_model)
+    reconstructed_sphere = reconstruct_from_parameters(sphere_params)
+
 end
   
 function lovr.draw(pass)
@@ -137,13 +97,73 @@ function lovr.draw(pass)
     randomized_surface:draw(pass, vec3(-1, 1, -1))
     harmonic22:draw(pass, vec3(2, 2, 2))
     reconstructed_h22:draw(pass, vec3(2, 2, 3))
+    sphere_model:draw(pass, vec3(1, 1, 1))
+    reconstructed_sphere:draw(pass, vec3(1, 1, 2))
     --pass:setShader()
     --pass:text("Spherical Hamoncs examples", start_point - vec3(0, .1, 0), .1)
     
 end
 
--- I think we are mixing up the real and imaginary parts, copy them again from here
--- https://en.wikipedia.org/wiki/Table_of_spherical_harmonics#Real_spherical_harmonics
+function analyze_SH(surface)
+  
+    n_vertices = #surface.vlist
+    print("N Vertices on surface: ", n_vertices)
+    -- we consider to have 100 segments horizontala dn vertical
+    solid_angle = 2 * math.pi * math.pi / (100 * 100)
+    maxl = 2
+
+    parameters={}
+    for l = 0, maxl do
+        parameters[l] = {}
+        for m = -l, l do 
+            parameters[l][m] = 0
+        end 
+    end
+
+    for index, vertex in ipairs(surface.vlist) do
+        local x, y, z = vertex[1], vertex[2], vertex[3]
+        local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
+        local theta = math.acos(z / r)
+        local phi = math.atan2(y, x)
+        if theta ~= theta then
+            theta = 0
+        end
+        for l = 0, maxl do
+            for m = -l, l do
+                parameters[l][m] = parameters[l][m] +
+                (r * math.sin(theta) * solid_angle * return_SH(l, m, theta, -phi)) -- * math.cos(m * phi) -- not needed for our version
+            end
+        end
+    end
+    print('Resulting Harmoncis parameters: ')
+    print(pretty.write(parameters, '  ', true))
+    return parameters
+end
+
+function reconstruct_from_parameters(parameters)
+    reconstructed_surface = sphere_model:map(
+        function(x, y, z)
+            local r = 1 --from sphere model
+            local theta = math.acos(z / r)
+            local phi = math.atan2(y, x)
+            if theta ~= theta then
+                theta = 0
+            end
+            r = 0
+            for l = 0, maxl do
+                for m = -l, l do
+                    r = r + (parameters[l][m] * return_SH(l, m, theta, phi))
+                end
+            end
+            x = r * math.sin(theta) * math.cos(phi)
+            y = r * math.sin(theta) * math.sin(phi)
+            z = r * math.cos(theta)
+            return x, y, z
+        end
+    )
+    return reconstructed_surface
+end
+
 function return_SH(l, m, theta, phi)
     if l == 0 then
       --Y(0,0)
@@ -176,11 +196,11 @@ function return_SH(l, m, theta, phi)
           return .25 * math.sqrt(5/math.pi) * (3 * math.pow(math.cos(theta), 2) - 1)
           
         elseif m == 1 then
-          --f Y(2, 1)
+          -- Y(2, 1)
           return 0.25 * math.sqrt(15/math.pi) * math.sin(2 * theta) * math.cos(phi)
           
         elseif m == 2 then
-          --Y(2, 2)
+          -- Y(2, 2)
           return 0.25 * math.sqrt(15/math.pi) * math.pow(math.sin(theta), 2) * math.cos(2 * phi)
           
         end 
