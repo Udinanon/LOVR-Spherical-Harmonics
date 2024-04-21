@@ -2,8 +2,8 @@ pretty = require 'pl.pretty'
 solids = require('solids')
 function lovr.load()
     shader = lovr.graphics.newShader('vertex.glsl', 'frag.glsl')
-    model = lovr.graphics.newModel('model.obj')
-    sphere_model = solids.fromModel(model)
+    sphere_model = solids.sphere(5)
+
     m = {2, 3, 1, 4, 8, 7, 1, 1}
     max_radius = 0
     randomized_surface = sphere_model:map(
@@ -43,10 +43,10 @@ function lovr.load()
 
     harmonic22 = sphere_model:map(
         function(x, y, z)
-            local r = 1 -- because we start from a sphere
+            local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
             local theta = math.acos(z / r)
             local phi = math.atan2(y, x)
-            r = return_SH(2, 2, theta, phi)
+            r = .5 + (.5* return_SH(2, 2, theta, phi))
             x = r * math.sin(theta) * math.cos(phi)
             y = r * math.sin(theta) * math.sin(phi)
             z = r * math.cos(theta)
@@ -60,7 +60,7 @@ function lovr.load()
         for m = -l, l do
             harmonics[l][m] = sphere_model:map(
                 function(x, y, z)
-                    local r = 1 -- because we start from a sphere
+                    local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
                     local theta = math.acos(z / r)
                     local phi = math.atan2(y, x)
                     r = return_SH(l, m, theta, phi)
@@ -83,6 +83,7 @@ end
   
 function lovr.draw(pass)
     draw_axes(pass)
+    pass:setWireframe(true)
 
     pass:setShader('normal')
     start_point = vec3(-2, 1, 1)
@@ -109,7 +110,7 @@ function analyze_SH(surface)
     n_vertices = #surface.vlist
     print("N Vertices on surface: ", n_vertices)
     -- we consider to have 100 segments horizontala dn vertical
-    solid_angle = 2 * math.pi * math.pi / (100 * 100)
+    solid_angle = 4 * math.pi / (10242)
     maxl = 2
 
     parameters={}
@@ -131,7 +132,7 @@ function analyze_SH(surface)
         for l = 0, maxl do
             for m = -l, l do
                 parameters[l][m] = parameters[l][m] +
-                (r * math.sin(theta) * solid_angle * return_SH(l, m, theta, -phi)) -- * math.cos(m * phi) -- not needed for our version
+                    (r * return_SH(l, m, theta, -phi) * solid_angle)  -- * math.cos(m * phi) -- not needed for our version
             end
         end
     end
@@ -143,7 +144,7 @@ end
 function reconstruct_from_parameters(parameters)
     reconstructed_surface = sphere_model:map(
         function(x, y, z)
-            local r = 1 --from sphere model
+            local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
             local theta = math.acos(z / r)
             local phi = math.atan2(y, x)
             if theta ~= theta then
