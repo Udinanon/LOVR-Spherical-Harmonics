@@ -9,28 +9,31 @@ function lovr.load()
     randomized_surface = sphere_model:map(
         function(x, y, z)
             local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
-            local theta = math.acos(z / r)
+            local theta = safe_theta(z, r)
             local phi = math.atan2(y, x)
             r = 0
-
-            r = r + math.pow(math.sin(m[8] * theta), m[1])
-            r = r + math.pow(math.cos(m[2] * theta), m[3])
-            r = r + math.pow(math.sin(m[4] * phi), m[5])
-            r = r + math.pow(math.cos(m[6] * phi), m[7])
+            
+            r = r + .1 * math.pow(math.sin(m[8] * theta), m[1])
+            r = r + .1 * math.pow(math.cos(m[2] * theta), m[3])
+            r = r + .1 * math.pow(math.sin(m[4] * phi), m[5])
+            r = r + .1 * math.pow(math.cos(m[6] * phi), m[7])
             if r > max_radius then
                 max_radius = r
             end
+        
+
             x = r * math.sin(theta) * math.cos(phi)
             y = r * math.sin(theta) * math.sin(phi)
             z = r * math.cos(theta)
             return x, y, z
         end
     )
+    
     print('radius: ', max_radius)
     randomized_surface = randomized_surface:map(
         function(x, y, z)
             local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
-            local theta = math.acos(z / r)
+            local theta = safe_theta(z, r)
             local phi = math.atan2(y, x)
 
             r = r / max_radius
@@ -44,7 +47,7 @@ function lovr.load()
     harmonic22 = sphere_model:map(
         function(x, y, z)
             local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
-            local theta = math.acos(z / r)
+            local theta = safe_theta(z, r)
             local phi = math.atan2(y, x)
             r = .5 + (.5* return_SH(2, 2, theta, phi))
             x = r * math.sin(theta) * math.cos(phi)
@@ -61,7 +64,7 @@ function lovr.load()
             harmonics[l][m] = sphere_model:map(
                 function(x, y, z)
                     local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
-                    local theta = math.acos(z / r)
+                    local theta = safe_theta(z, r)
                     local phi = math.atan2(y, x)
                     r = return_SH(l, m, theta, phi)
                     x = r * math.sin(theta) * math.cos(phi)
@@ -95,11 +98,11 @@ function lovr.draw(pass)
     --pass:cube(1, 1, 1)
     --pass:cylinder(1, 0, 3)
 
-    randomized_surface:draw(pass, vec3(-1, 1, -1))
     harmonic22:draw(pass, vec3(2, 2, 2))
     reconstructed_h22:draw(pass, vec3(2, 2, 3))
-    sphere_model:draw(pass, vec3(1, 1, 1))
-    reconstructed_sphere:draw(pass, vec3(1, 1, 2))
+
+    randomized_surface:draw(pass, vec3(1, 1, 1))
+    reconstructed_random:draw(pass, vec3(1, 1, 2))
     --pass:setShader()
     --pass:text("Spherical Hamoncs examples", start_point - vec3(0, .1, 0), .1)
     
@@ -124,11 +127,8 @@ function analyze_SH(surface)
     for index, vertex in ipairs(surface.vlist) do
         local x, y, z = vertex[1], vertex[2], vertex[3]
         local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
-        local theta = math.acos(z / r)
+        local theta = safe_theta(z, r)
         local phi = math.atan2(y, x)
-        if theta ~= theta then
-            theta = 0
-        end
         for l = 0, maxl do
             for m = -l, l do
                 parameters[l][m] = parameters[l][m] +
@@ -145,11 +145,9 @@ function reconstruct_from_parameters(parameters)
     reconstructed_surface = sphere_model:map(
         function(x, y, z)
             local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
-            local theta = math.acos(z / r)
+            local theta = safe_theta(z, r)
             local phi = math.atan2(y, x)
-            if theta ~= theta then
-                theta = 0
-            end
+
             r = 0
             for l = 0, maxl do
                 for m = -l, l do
@@ -206,6 +204,17 @@ function return_SH(l, m, theta, phi)
           
         end 
     end
+end
+
+---Simple check if R = 0
+---@param z number Z coordinate
+---@param r number Radius
+---@return integer 
+function safe_theta(z, r) 
+    if r == 0 then
+        return 0
+    end
+    return math.acos(z/r)
 end
 
 ---Draw system axes
