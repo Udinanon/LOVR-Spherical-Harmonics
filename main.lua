@@ -79,9 +79,64 @@ function lovr.load()
     h22_params = analyze_SH(harmonic22)
     reconstructed_h22 = reconstruct_from_parameters(h22_params)
 
-    sphere_params = analyze_SH(sphere_model)
-    reconstructed_sphere = reconstruct_from_parameters(sphere_params)
+    random_params = analyze_SH(randomized_surface)
+    reconstructed_random = reconstruct_from_parameters(random_params)
 
+end
+
+function lovr.update()
+    local pressed = lovr.system.wasKeyPressed('space')
+    if pressed then
+        m = {   lovr.math.random(0, 10),
+                lovr.math.random(0, 10),
+                lovr.math.random(0, 10),
+                lovr.math.random(0, 10),
+                lovr.math.random(0, 10),
+                lovr.math.random(0, 10),
+                lovr.math.random(0, 10),
+                lovr.math.random(0, 10),
+        }
+        max_radius = 0
+        randomized_surface = sphere_model:map(
+            function(x, y, z)
+                local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
+                local theta = safe_theta(z, r)
+                local phi = math.atan2(y, x)
+                r = .5
+
+                r = r + .1 * math.pow(math.sin(m[8] * theta), 1)
+                r = r + .1 * math.pow(math.cos(m[2] * theta), 1)
+                r = r + .1 * math.pow(math.sin(m[4] * phi), 1)
+                r = r + .1 * math.pow(math.cos(m[6] * phi), 1)
+                if r > max_radius then
+                    max_radius = r
+                end
+
+
+                x = r * math.sin(theta) * math.cos(phi)
+                y = r * math.sin(theta) * math.sin(phi)
+                z = r * math.cos(theta)
+                return x, y, z
+            end
+        )
+
+        print('radius: ', max_radius)
+        randomized_surface = randomized_surface:map(
+            function(x, y, z)
+                local r = math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
+                local theta = safe_theta(z, r)
+                local phi = math.atan2(y, x)
+
+                r = r / max_radius
+                x = r * math.sin(theta) * math.cos(phi)
+                y = r * math.sin(theta) * math.sin(phi)
+                z = r * math.cos(theta)
+                return x, y, z
+            end
+        )
+        random_params = analyze_SH(randomized_surface)
+        reconstructed_random = reconstruct_from_parameters(random_params)
+    end
 end
   
 function lovr.draw(pass)
