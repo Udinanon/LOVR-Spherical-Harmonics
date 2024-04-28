@@ -39,8 +39,15 @@ luac.out
 *.x86_64
 *.hex
 
-# 
+# LOVR files and folders
 *.AppImage
 pl/
 *.json
 conf.lua
+
+# Python venv
+.venv
+shtools
+
+#VSCode
+.vscode/ltex.dictionary.en-US.txt
