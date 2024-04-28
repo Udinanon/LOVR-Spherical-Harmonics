@@ -1,8 +1,9 @@
 pretty = require 'pl.pretty' 
 solids = require('solids')
+
 function lovr.load()
     shader = lovr.graphics.newShader('vertex.glsl', 'frag.glsl')
-    sphere_model = solids.sphere(5)
+    sphere_model = solids.sphere(4)
 
     m = {2, 3, 1, 4, 8, 7, 1, 1}
     max_radius = 0
@@ -168,7 +169,7 @@ function analyze_SH(surface)
     n_vertices = #surface.vlist
     print("N Vertices on surface: ", n_vertices)
     -- we consider to have 100 segments horizontala dn vertical
-    solid_angle = 4 * math.pi / (10242)
+    solid_angle = 4 * math.pi / (n_vertices)
     maxl = 2
 
     parameters={}
@@ -283,3 +284,4 @@ function draw_axes(pass)
     pass:line(0, 0, 0, 0, 0, 1)
     pass:setColor(1, 1, 1)
 end
+require('flight').integrate()
